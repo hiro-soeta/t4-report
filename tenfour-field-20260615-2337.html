@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>フィールド分析レポート — Ten-Four Tracker</title>
+<style>
+/* Ten-Four Tracker — FIELD report (mobile-shaped, self-contained, print/export-friendly).
+   No external font/CSS dependency: tokens inlined so the exported HTML/PNG render anywhere. */
+:root{
+  --bg:#eef1f5; --sheet:#ffffff; --panel:#ffffff; --panel2:#fbfcfe; --raise:#eef1f6;
+  --line:#e6eaf0; --line2:#d3d9e2; --ink:#19212e; --ink2:#3a4658; --mut:#697587; --mut2:#9aa3b1;
+  --accent:#5b6ef5; --blue:#2f73d8;
+  --val:#15a05c; --pair:#b9892b; --draw:#3f6ad8; --air:#d6494f;
+  --pos:#15a05c; --neg:#d6494f;
+  --rg-empty:#eef1f6; --rg-ink:#1b2533;
+  --warn:#8a6d1a; --warn-bg:#fbf3da; --warn-bd:#ecd9a3;
+  --mono:'Inter',ui-sans-serif,system-ui,'Segoe UI',sans-serif;
+  --sans:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:13px/1.5 var(--sans);font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%}
+.num{font-family:var(--mono)}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+b{font-weight:700}
+
+/* ---- export toolbar (screen only) ---- */
+.r-toolbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:10px 14px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.r-toolbar .tb-title{font-weight:800;font-size:13px;margin-right:auto;display:flex;align-items:center;gap:7px}
+.r-toolbar .tb-title .logo{width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,#5b6ef5,#2f73d8);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px}
+.btn{appearance:none;font:700 12px var(--sans);padding:8px 13px;border-radius:9px;cursor:pointer;border:1px solid var(--line2);
+  background:#fff;color:var(--ink2);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:linear-gradient(135deg,#5b6ef5,#2f73d8);border-color:transparent;color:#fff}
+.btn.primary:hover{filter:brightness(1.05);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.tb-back{font:600 12px var(--sans);color:var(--mut);text-decoration:none;padding:7px 4px}
+.tb-back:hover{color:var(--accent)}
+
+/* ---- interactive chips (open-range + explorer, on screen + HTML export) ---- */
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font:600 11px var(--mono);padding:5px 10px;border-radius:8px;background:var(--raise);border:1px solid var(--line);
+  color:var(--mut);cursor:pointer;user-select:none;white-space:nowrap}
+.chip:hover{color:var(--ink2)}
+.chip.on{background:rgba(91,110,245,.14);border-color:rgba(91,110,245,.4);color:var(--accent)}
+.chip .nlabel{margin-left:5px;color:var(--mut2)}
+
+/* ---- screen (interactive) vs print/capture (expanded static) layouts ---- */
+.print-only{display:none}
+body.capture .screen-only{display:none!important}
+body.capture .print-only{display:block!important}
+
+/* ---- the mobile sheet ---- */
+.wrap{display:flex;justify-content:center;padding:18px 12px 40px}
+.sheet{width:100%;max-width:412px;background:var(--sheet);border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 18px 50px -28px rgba(20,30,60,.4);padding:18px 16px 22px;overflow:hidden}
+
+/* ---- report head ---- */
+.r-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:6px}
+.r-head .mk{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#5b6ef5,#2f73d8);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;flex-shrink:0}
+.r-head h1{margin:0;font-size:17px;font-weight:800;letter-spacing:-.2px}
+.r-head .sub{font-size:11px;color:var(--mut);font-weight:600;margin-top:1px}
+.r-meta{display:flex;flex-wrap:wrap;gap:5px 7px;margin:11px 0 4px;font-size:10.5px}
+.r-meta span{background:var(--raise);border:1px solid var(--line);border-radius:7px;padding:3px 8px;color:var(--mut);font-weight:600}
+.r-meta b{color:var(--ink2);font-family:var(--mono)}
+.banner{font-size:11px;line-height:1.5;color:var(--warn);background:var(--warn-bg);
+  border:1px solid var(--warn-bd);border-left:3px solid var(--warn-bd);border-radius:11px;padding:9px 12px;margin:13px 0 4px}
+.banner b{color:var(--warn)}
+
+/* ---- section + panel ---- */
+.sec{font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:1.1px;margin:22px 2px 9px;
+  display:flex;align-items:center;gap:8px}
+.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.panel{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:13px 13px;margin-bottom:12px;break-inside:avoid}
+.panel .ph{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:11px}
+.panel .ph h3{margin:0;font-size:13px;font-weight:700}
+.panel .ph .hint{font-size:10px;color:var(--mut2);font-weight:600}
+
+/* ---- tiles ---- */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
+.tile{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.tile .k{font-size:10.5px;color:var(--mut);font-weight:600}
+.tile .v{font-family:var(--mono);font-size:22px;font-weight:800;margin-top:4px;letter-spacing:-.5px}
+.tile .sub{font-family:var(--mono);font-size:10px;color:var(--mut2);margin-top:2px}
+
+/* ---- position stats table ---- */
+table.pos{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono)}
+table.pos th{font-size:9.5px;color:var(--mut);font-weight:700;text-align:right;padding:5px 3px;border-bottom:1px solid var(--line2);white-space:nowrap}
+table.pos td{text-align:right;padding:6px 3px;border-bottom:1px solid var(--line)}
+table.pos th:first-child,table.pos td:first-child{text-align:left}
+table.pos tr:last-child td{border-bottom:0}
+table.pos td.lo{color:var(--mut2)}
+.poschip{display:inline-flex;min-width:30px;justify-content:center;font:700 10px var(--mono);padding:2px 6px;border-radius:6px;
+  background:var(--raise);border:1px solid var(--line2);color:var(--ink2)}
+
+/* ---- 13x13 range grid ---- */
+.gridwrap{margin-bottom:14px;break-inside:avoid}
+.gridwrap .gl{display:flex;align-items:center;gap:7px;margin-bottom:6px;font-size:11px;color:var(--mut);font-weight:600}
+.rangegrid{display:grid;grid-template-columns:repeat(13,1fr);gap:2px;max-width:330px;margin:0 auto}
+.rg{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;
+  font:700 7.5px var(--mono);color:var(--rg-ink);position:relative}
+.rg small{position:absolute;bottom:0;right:1px;font-size:5.5px;opacity:.6;font-weight:600}
+
+/* ---- labeled bars (action_ranges) ---- */
+.dist{display:flex;flex-direction:column;gap:6px}
+.distrow{display:grid;grid-template-columns:78px 1fr 34px;align-items:center;gap:8px;font-size:11px}
+.distrow .lab{color:var(--ink2);font:600 10.5px var(--mono)}
+.distrow .tr{height:13px;background:var(--rg-empty);border-radius:4px;overflow:hidden}
+.distrow .tr i{display:block;height:100%;border-radius:4px}
+.distrow .vv{text-align:right;font:700 10.5px var(--mono);color:var(--ink2)}
+i.v{background:var(--val)} i.m{background:var(--pair)} i.a{background:var(--air)} i.d{background:var(--draw)}
+.subhd{font-size:11px;font-weight:700;color:var(--ink2);margin:11px 0 6px;display:flex;justify-content:space-between}
+.subhd:first-child{margin-top:0}
+.subhd .nlabel{font:600 10px var(--mono);color:var(--mut2)}
+
+/* ---- explorer: per-action composition rows ---- */
+.erow{padding:7px 0;border-bottom:1px dashed var(--line)}
+.erow:last-child{border-bottom:0}
+.ehd{display:flex;align-items:baseline;gap:7px;margin-bottom:4px}
+.ehd .ekey{font:700 11.5px var(--mono);color:var(--ink)}
+.ehd .en{font:600 10px var(--mono);color:var(--mut2);margin-left:auto}
+.cbar{display:flex;height:14px;border-radius:5px;overflow:hidden;background:var(--rg-empty)}
+.cbar i{display:block;height:100%}
+.cbar i.s-v{background:var(--val)} .cbar i.s-p{background:var(--pair)}
+.cbar i.s-d{background:var(--draw)} .cbar i.s-a{background:var(--air)}
+.enums{display:flex;gap:10px;margin-top:4px;font:700 10px var(--mono);flex-wrap:wrap}
+.enums .cv{color:var(--val)} .enums .cp{color:var(--pair)} .enums .cd{color:var(--draw)} .enums .ca{color:var(--air)}
+.clegend{display:flex;gap:11px;flex-wrap:wrap;font-size:10px;color:var(--mut);margin:2px 0 9px}
+.clegend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+/* ---- explorer: detail heatmap ---- */
+.matrix{width:100%;border-collapse:collapse;font-family:var(--mono);table-layout:fixed}
+.matrix th{font-size:8px;font-weight:700;color:var(--mut);padding:3px 0 5px;text-align:center;line-height:1.15}
+.matrix th.k,.matrix td.k{text-align:left;width:48px;font-size:9px}
+.matrix th.n,.matrix td.n{width:26px;text-align:right;font-size:8.5px;color:var(--mut2);padding-right:3px}
+.matrix td{font-size:8.5px;text-align:center;color:var(--ink2);padding:0;height:18px;border:1px solid #fff}
+.matrix td.k{color:var(--ink);font-weight:700}
+.matrix .grp{font-size:8px;color:var(--mut2);font-weight:700;text-align:center;padding-bottom:2px;letter-spacing:.3px}
+.matrix .gV{color:var(--val)} .matrix .gP{color:var(--pair)} .matrix .gD{color:var(--draw)} .matrix .gA{color:var(--air)}
+
+/* ---- notes / hints ---- */
+.notes{display:flex;flex-direction:column;gap:8px}
+.note{font-size:11px;line-height:1.5;color:var(--mut);padding:9px 11px;border:1px solid var(--line2);border-radius:10px;background:var(--panel)}
+.note b{color:var(--ink2)} .note .nlabel{color:var(--mut2);font-size:10px;font-family:var(--mono)}
+.note.exploit{border-color:rgba(91,110,245,.4);background:rgba(91,110,245,.05)}
+.note.exploit b{color:var(--accent)}
+
+.r-foot{margin-top:20px;padding-top:13px;border-top:1px solid var(--line);font-size:10px;color:var(--mut2);line-height:1.5}
+.r-foot b{color:var(--mut)}
+
+/* ---- print → PDF ---- */
+@media print{
+  @page{size:A4 portrait;margin:11mm 10mm}
+  body{background:#fff}
+  .r-toolbar{display:none!important}
+  .screen-only{display:none!important}
+  .print-only{display:block!important}
+  .wrap{padding:0;display:block}
+  .sheet{max-width:none;width:100%;border:0;border-radius:0;box-shadow:none;padding:0}
+  .panel,.gridwrap,.tile{break-inside:avoid}
+  .sec{break-after:avoid}
+}
+/* exported standalone html shares .wrap/.sheet; toolbar removed at export time */
+body.exported .wrap{padding:16px 10px 32px}
+
+</style></head><body class="exported"><div class="wrap"><div class="sheet" id="sheet"></div></div><script>window.__REPORT_DATA__={"field":{"hands":17815,"seat_hands":89075,"pool":{"vpip":{"n":20490,"d":89075,"pct":23},"pfr":{"n":15269,"d":89075,"pct":17.1},"threebet":{"n":3287,"d":38870,"pct":8.5}},"by_position":{"UTG":{"vpip":{"n":3098,"d":14840,"pct":20.9},"pfr":{"n":3029,"d":14840,"pct":20.4},"rfi":{"n":3022,"d":14840,"pct":20.4},"threebet":{"n":7,"d":0,"pct":null},"fold_to_3bet":{"n":407,"d":1041,"pct":39.1},"fold_to_cbet":{"n":111,"d":308,"pct":36}},"HJ":{"vpip":{"n":3041,"d":14843,"pct":20.5},"pfr":{"n":2880,"d":14843,"pct":19.4},"rfi":{"n":2579,"d":11846,"pct":21.8},"threebet":{"n":284,"d":2935,"pct":9.7},"fold_to_3bet":{"n":317,"d":813,"pct":39},"fold_to_cbet":{"n":105,"d":316,"pct":33.2}},"CO":{"vpip":{"n":3208,"d":14882,"pct":21.6},"pfr":{"n":2907,"d":14882,"pct":19.5},"rfi":{"n":2364,"d":9224,"pct":25.6},"threebet":{"n":518,"d":5574,"pct":9.3},"fold_to_3bet":{"n":297,"d":643,"pct":46.2},"fold_to_cbet":{"n":97,"d":300,"pct":32.3}},"BTN":{"vpip":{"n":3691,"d":14828,"pct":24.9},"pfr":{"n":2990,"d":14828,"pct":20.2},"rfi":{"n":2218,"d":6722,"pct":33},"threebet":{"n":725,"d":8016,"pct":9},"fold_to_3bet":{"n":273,"d":508,"pct":53.7},"fold_to_cbet":{"n":137,"d":400,"pct":34.2}},"SB":{"vpip":{"n":3318,"d":14821,"pct":22.4},"pfr":{"n":2548,"d":14821,"pct":17.2},"rfi":{"n":1481,"d":4362,"pct":34},"threebet":{"n":978,"d":10367,"pct":9.4},"fold_to_3bet":{"n":78,"d":195,"pct":40},"fold_to_cbet":{"n":137,"d":428,"pct":32}},"BB":{"vpip":{"n":4134,"d":14861,"pct":27.8},"pfr":{"n":915,"d":14861,"pct":6.2},"rfi":{"n":0,"d":0,"pct":null},"threebet":{"n":775,"d":11978,"pct":6.5},"fold_to_3bet":{"n":0,"d":0,"pct":null},"fold_to_cbet":{"n":620,"d":1754,"pct":35.3}}},"grids":{"UTG":{"22":37,"33":34,"44":45,"55":62,"66":56,"77":72,"88":60,"99":74,"ATo":109,"QJo":76,"KQo":119,"A4s":36,"A3s":41,"ATs":40,"84s":2,"K3s":4,"TT":60,"QJs":42,"A6s":31,"A7s":42,"KJo":117,"A9o":37,"AKs":38,"QTo":26,"Q9s":27,"KJs":44,"AQo":137,"A8s":46,"A7o":8,"KK":52,"AKo":146,"54s":19,"AJo":125,"JTs":39,"A9s":32,"KQs":43,"K8s":24,"AJs":44,"JTo":23,"KTo":55,"98s":36,"Q7s":6,"A2s":34,"QTs":41,"86s":10,"A5s":41,"QQ":64,"76s":28,"J9s":29,"AQs":53,"JJ":60,"K7s":21,"K9s":32,"K6s":16,"87s":17,"AA":67,"KTs":39,"K5s":10,"53s":6,"T9s":46,"A5o":15,"T7o":2,"87o":2,"53o":2,"96o":1,"J4s":3,"K2s":7,"43s":6,"97s":9,"63s":2,"32s":4,"T8s":11,"T4s":3,"T7s":6,"65s":27,"Q8s":16,"76o":3,"75s":3,"J5s":2,"J8s":16,"64s":3,"J7s":4,"42s":1,"83s":1,"T9o":4,"Q5s":1,"A8o":9,"A3o":4,"65o":1,"97o":1,"J6s":1,"A6o":7,"Q8o":1,"A4o":5,"92s":1,"K4s":5,"K8o":4,"Q9o":2,"J9o":4,"Q2s":1,"54o":2,"Q4o":2,"98o":1,"K7o":3,"K9o":3,"T6s":2,"K5o":2,"J7o":3,"J8o":1,"84o":1,"73s":1,"A2o":5,"T3o":1,"74s":2,"Q7o":1,"T6o":1,"K4o":1,"Q3s":2,"Q4s":1,"T5s":1,"85s":1,"75o":1,"95s":1,"72o":1,"Q6s":1,"J2o":1},"HJ":{"22":27,"33":41,"44":43,"55":44,"66":54,"77":35,"88":52,"99":49,"A6o":6,"T7s":6,"AQo":113,"J7s":3,"AJo":114,"QQ":72,"87s":26,"ATs":34,"A2o":5,"AJs":40,"Q6s":2,"KTs":36,"QTo":32,"KTo":55,"A5o":8,"AKs":35,"A5s":34,"AA":55,"QJo":67,"AKo":104,"JTs":33,"A7s":38,"A9s":27,"KQo":112,"KQs":22,"A7o":14,"A9o":35,"KJo":86,"98s":28,"QJs":34,"KJs":39,"86s":5,"76s":27,"K4s":9,"KK":55,"Q8s":22,"64s":6,"J8s":10,"Q9o":5,"A3o":3,"K9o":5,"JJ":67,"A8s":44,"73s":2,"T9s":21,"K9s":20,"K8s":24,"65s":21,"A2s":36,"A4s":27,"J9s":22,"A3s":37,"AQs":30,"TT":60,"QTs":28,"T9o":4,"ATo":92,"53s":6,"A6s":35,"97s":9,"65o":1,"JTo":19,"T8s":11,"K2s":4,"A8o":12,"K8o":2,"Q9s":19,"52s":1,"A4o":5,"54s":17,"54o":1,"95o":1,"Q7s":7,"K7s":17,"K5s":11,"J8o":2,"K3s":5,"T6s":1,"K6s":7,"K6o":1,"74s":2,"T5s":2,"32s":1,"43s":8,"84s":1,"J2s":1,"J9o":3,"75s":6,"K7o":1,"T3s":1,"Q5s":1,"96o":1,"Q6o":1,"42s":1,"98o":1,"Q3s":1,"95s":2,"T2s":1,"K5o":1,"96s":2,"Q4s":2,"76o":1,"J6s":1,"93s":1},"CO":{"22":26,"33":15,"44":29,"55":34,"66":32,"77":41,"88":32,"99":35,"K6s":17,"98s":20,"87s":21,"JJ":37,"76s":23,"KTo":75,"K4s":13,"QQ":49,"QTs":28,"A5s":24,"JTs":37,"J9s":27,"K8o":5,"A8s":29,"KJo":71,"T9s":33,"QTo":41,"ATs":29,"54s":18,"A6o":20,"JTo":31,"QJs":27,"A8o":40,"ATo":75,"T8s":18,"AQo":81,"TT":51,"32s":4,"A7s":25,"A7o":18,"A4s":29,"A9o":50,"KTs":40,"AA":43,"T6s":3,"QJo":60,"KK":50,"AKs":27,"A5o":24,"K5s":11,"Q5s":8,"Q9s":22,"A9s":22,"Q8s":24,"AJo":77,"AQs":26,"K9s":31,"J7s":11,"AKo":103,"A6s":17,"64s":5,"A3s":32,"KJs":18,"84s":1,"KQs":24,"J8s":16,"AJs":32,"KQo":70,"97s":11,"T9o":5,"K8s":25,"65o":1,"J4s":4,"53s":6,"A2s":23,"J7o":4,"42s":1,"Q4s":3,"K7s":16,"86s":9,"T7s":7,"J8o":1,"85s":1,"65s":16,"A4o":13,"Q8o":1,"K9o":13,"Q7s":12,"75s":5,"Q2s":3,"43s":5,"A3o":7,"Q3s":4,"Q6s":8,"K5o":1,"Q9o":6,"J6s":3,"K3s":6,"A2o":3,"T8o":1,"74s":2,"K7o":2,"74o":1,"J9o":6,"K4o":1,"76o":2,"98o":2,"T4o":1,"J5s":1,"87o":1,"Q3o":1,"K2s":3,"97o":1,"52s":3,"96s":2,"T5s":1,"Q7o":1,"73o":1,"72s":1},"BTN":{"22":27,"33":36,"44":32,"55":29,"66":27,"77":33,"88":26,"99":24,"A8s":22,"AKs":21,"AKo":78,"QQ":28,"KTs":20,"A5o":35,"98o":11,"JJ":32,"A2o":15,"76s":12,"J9s":19,"KJo":60,"98s":17,"T9s":14,"A9s":14,"T9o":22,"K8s":21,"AQo":55,"J7s":7,"AQs":22,"AA":37,"74s":5,"KTo":46,"ATo":61,"43s":4,"QTs":23,"A9o":41,"QJo":60,"AJs":20,"K9o":32,"AJo":63,"QJs":20,"KK":34,"A5s":19,"JTo":45,"Q9o":16,"J9o":19,"J6s":7,"K3s":15,"Q7s":17,"K9s":15,"KQo":57,"75s":8,"T8s":19,"K4s":10,"ATs":16,"97s":14,"A3o":20,"T6s":8,"87s":16,"K2o":1,"J8o":4,"84s":3,"K8o":13,"A4s":24,"TT":34,"J8s":12,"87o":5,"KQs":26,"Q8s":13,"A7o":47,"T2o":2,"QTo":39,"K7s":13,"K2s":6,"A7s":19,"85s":8,"54s":15,"K3o":1,"Q2s":7,"KJs":14,"42o":2,"63s":2,"K5s":15,"73s":3,"JTs":17,"A2s":16,"A3s":15,"A6o":26,"86s":15,"K7o":6,"Q5s":9,"K6s":11,"A4o":34,"A8o":36,"T7s":7,"J2s":4,"76o":3,"72s":2,"64s":5,"A6s":18,"Q9s":21,"T4s":2,"96s":12,"Q4s":4,"32s":3,"63o":1,"J5s":10,"54o":2,"Q8o":7,"65s":14,"Q6o":4,"65o":2,"Q6s":10,"53s":4,"T2s":1,"93o":2,"Q7o":2,"Q5o":1,"Q3s":6,"T3s":1,"K6o":1,"94s":1,"J3s":1,"74o":1,"T8o":1,"J4s":7,"T5s":2,"93s":1,"95s":4,"J7o":3,"62s":2,"92o":1,"97o":1,"52o":1,"Q2o":1,"K4o":2,"T4o":1},"SB":{"22":17,"33":27,"44":16,"55":12,"66":15,"77":27,"88":14,"99":20,"KTo":33,"QJo":32,"AKo":48,"KQs":13,"A2o":16,"A4s":11,"95s":3,"A9s":13,"KK":22,"T8o":3,"JTo":27,"65s":9,"AJo":36,"53s":8,"K4s":6,"QJs":16,"AJs":9,"ATo":19,"K3s":7,"A6s":11,"K8s":7,"Q7o":6,"KQo":42,"Q2o":1,"A8o":26,"A9o":36,"AA":18,"JTs":19,"J9s":17,"K2s":8,"52s":4,"J9o":12,"A6o":16,"54s":7,"Q9o":13,"KJs":20,"87s":11,"J8s":5,"A7o":22,"KJo":39,"T8s":5,"JJ":16,"K8o":18,"76s":12,"KTs":9,"K6s":12,"A4o":25,"J5o":2,"A5o":22,"63s":3,"QTo":21,"ATs":14,"K7o":15,"96s":6,"Q7s":5,"QQ":20,"K9o":16,"75s":6,"A8s":15,"42s":2,"T7s":9,"98s":10,"A3s":12,"K4o":3,"43o":3,"J7s":12,"87o":3,"T9s":14,"TT":15,"AQo":45,"J5s":5,"Q8o":7,"K9s":16,"AQs":5,"T6s":3,"J2o":1,"K5s":11,"32s":4,"K5o":3,"Q5s":5,"T9o":13,"43s":4,"Q4s":8,"Q6o":2,"A5s":10,"64s":5,"Q8s":14,"QTs":10,"K7s":10,"65o":1,"97s":8,"A7s":16,"J2s":3,"Q9s":10,"54o":1,"AKs":6,"J8o":3,"A2s":9,"76o":3,"Q6s":6,"A3o":16,"J3s":3,"94o":1,"Q2s":4,"J4s":3,"98o":10,"82s":1,"T4s":5,"K6o":5,"J4o":1,"97o":2,"83s":3,"86s":4,"T5s":1,"86o":1,"74s":3,"Q3s":3,"J6s":4,"K2o":2,"73s":1,"J7o":4,"85s":3,"Q3o":1,"T7o":1,"T2s":2,"T5o":1,"95o":1,"84o":1,"74o":1,"Q4o":1,"92s":1},"BB":{}},"action_ranges":{"river_bet":{"n":2252,"buckets":{"air":207,"pair":641,"value":1404}},"river_call":{"n":981,"buckets":{"pair":361,"value":603,"air":17}},"threebet":{"n":3287,"buckets":{"broadway":619,"AK/AQ":754,"other":677,"QQ+":442,"pair":547,"SC":248}},"turn_bet":{"n":318,"buckets":{"value":137,"pair":107,"air":74}}},"hints":[{"title":"リバーのベットはバリュー過多","detail":"プールのリバーベット/レイズの bluff(air) は 9%（value 2pair+ 62%）。過剰なブラフキャッチは損 — 降りてOK。","severity":"exploit","n":2252,"filter":{"spot":"river_bet"}},{"title":"3Betは値寄り（ブラフ少）","detail":"プールの3Betの 72% が強い手、SCブラフは 8%。3betに過剰フォールド不要・4betブラフ控えめ。","severity":"exploit","n":3287,"filter":{"spot":"threebet"}}],"big_pots":[]},"explorer":{"cats":["straight+","set/trips","two pair","pair","pair+draw","combo draw","flush draw","OESD","gutshot","air/overc"],"streets":["flop","turn","river"],"data":{"flop":{"actions":[{"key":"Check","n":6889,"dist":{"pair":2775,"air/overc":2367,"gutshot":441,"flush draw":176,"two pair":382,"set/trips":200,"combo draw":54,"pair+draw":302,"OESD":140,"straight+":52}},{"key":"Bet:<33","n":538,"dist":{"pair":241,"air/overc":130,"two pair":46,"flush draw":13,"pair+draw":33,"OESD":4,"straight+":8,"set/trips":27,"combo draw":4,"gutshot":32}},{"key":"Bet:33-50","n":1898,"dist":{"gutshot":126,"air/overc":404,"pair":832,"flush draw":72,"two pair":197,"OESD":37,"combo draw":20,"set/trips":75,"pair+draw":111,"straight+":24}},{"key":"Bet:50-75","n":869,"dist":{"air/overc":128,"set/trips":32,"two pair":99,"pair":404,"gutshot":60,"combo draw":13,"OESD":28,"pair+draw":59,"flush draw":32,"straight+":14}},{"key":"Bet:75-100","n":269,"dist":{"pair":131,"flush draw":12,"OESD":9,"air/overc":36,"gutshot":22,"pair+draw":13,"set/trips":13,"two pair":23,"straight+":3,"combo draw":7}},{"key":"Bet:100+","n":125,"dist":{"pair":58,"air/overc":19,"pair+draw":11,"two pair":16,"gutshot":3,"OESD":7,"set/trips":4,"flush draw":4,"combo draw":2,"straight+":1}},{"key":"Raise","n":440,"dist":{"air/overc":44,"pair":163,"gutshot":24,"two pair":63,"set/trips":35,"pair+draw":36,"flush draw":26,"combo draw":16,"OESD":22,"straight+":11}},{"key":"Call","n":2627,"dist":{"pair":1189,"air/overc":430,"set/trips":104,"OESD":90,"flush draw":102,"gutshot":213,"two pair":245,"pair+draw":197,"straight+":25,"combo draw":32}},{"key":"Fold","n":1631,"dist":{"air/overc":895,"pair":597,"OESD":8,"gutshot":69,"pair+draw":17,"two pair":36,"flush draw":5,"set/trips":4}}],"vs_size":{"Call":{"33-50":{"n":1128,"dist":{"pair":516,"air/overc":205,"set/trips":47,"gutshot":97,"pair+draw":74,"OESD":32,"combo draw":10,"two pair":104,"flush draw":33,"straight+":10}},"<33":{"n":404,"dist":{"pair":192,"air/overc":73,"pair+draw":38,"flush draw":18,"set/trips":10,"gutshot":28,"two pair":35,"combo draw":3,"OESD":6,"straight+":1}},"50-75":{"n":634,"dist":{"pair":268,"set/trips":22,"OESD":28,"flush draw":25,"two pair":61,"gutshot":54,"air/overc":109,"straight+":7,"pair+draw":53,"combo draw":7}},"75-100":{"n":215,"dist":{"pair":101,"air/overc":24,"gutshot":17,"OESD":11,"pair+draw":13,"set/trips":13,"two pair":20,"flush draw":10,"straight+":2,"combo draw":4}},"100+":{"n":246,"dist":{"pair":112,"air/overc":19,"flush draw":16,"gutshot":17,"set/trips":12,"pair+draw":19,"two pair":25,"straight+":5,"combo draw":8,"OESD":13}}},"Fold":{"75-100":{"n":212,"dist":{"air/overc":114,"pair":74,"gutshot":15,"two pair":4,"pair+draw":3,"set/trips":1,"OESD":1}},"50-75":{"n":502,"dist":{"pair":163,"air/overc":292,"gutshot":19,"pair+draw":6,"two pair":15,"OESD":3,"set/trips":3,"flush draw":1}},"33-50":{"n":577,"dist":{"air/overc":323,"pair":225,"OESD":2,"two pair":9,"flush draw":2,"pair+draw":4,"gutshot":12}},"100+":{"n":177,"dist":{"pair":70,"air/overc":76,"gutshot":18,"OESD":2,"two pair":6,"pair+draw":3,"flush draw":2}},"<33":{"n":163,"dist":{"air/overc":90,"pair":65,"gutshot":5,"two pair":2,"pair+draw":1}}},"Raise":{"<33":{"n":77,"dist":{"air/overc":11,"set/trips":9,"pair":22,"pair+draw":12,"combo draw":2,"two pair":7,"gutshot":5,"OESD":4,"flush draw":4,"straight+":1}},"33-50":{"n":200,"dist":{"pair":74,"gutshot":12,"air/overc":22,"two pair":30,"pair+draw":11,"flush draw":10,"OESD":13,"combo draw":6,"set/trips":15,"straight+":7}},"100+":{"n":30,"dist":{"pair":13,"combo draw":1,"set/trips":4,"two pair":4,"flush draw":3,"air/overc":3,"pair+draw":2}},"50-75":{"n":95,"dist":{"set/trips":7,"pair+draw":8,"two pair":17,"OESD":4,"gutshot":5,"air/overc":7,"pair":35,"combo draw":6,"flush draw":5,"straight+":1}},"75-100":{"n":38,"dist":{"pair":19,"combo draw":1,"air/overc":1,"gutshot":2,"OESD":1,"straight+":2,"pair+draw":3,"flush draw":4,"two pair":5}}}}},"turn":{"actions":[{"key":"Check","n":4946,"dist":{"pair":1723,"air/overc":609,"gutshot":391,"two pair":751,"flush draw":98,"set/trips":168,"pair+draw":814,"OESD":137,"straight+":175,"combo draw":80}},{"key":"Bet:<33","n":183,"dist":{"air/overc":11,"flush draw":2,"pair+draw":40,"gutshot":10,"pair":54,"two pair":35,"set/trips":12,"straight+":13,"combo draw":3,"OESD":3}},{"key":"Bet:33-50","n":611,"dist":{"two pair":108,"pair":185,"set/trips":44,"pair+draw":107,"OESD":24,"straight+":57,"combo draw":16,"air/overc":33,"gutshot":29,"flush draw":8}},{"key":"Bet:50-75","n":1151,"dist":{"pair+draw":206,"two pair":226,"pair":319,"flush draw":30,"set/trips":91,"combo draw":29,"straight+":79,"gutshot":65,"air/overc":62,"OESD":44}},{"key":"Bet:75-100","n":562,"dist":{"gutshot":37,"pair":151,"pair+draw":85,"OESD":30,"air/overc":24,"two pair":100,"straight+":46,"combo draw":27,"set/trips":49,"flush draw":13}},{"key":"Bet:100+","n":275,"dist":{"pair":53,"flush draw":7,"straight+":23,"OESD":17,"set/trips":40,"two pair":41,"air/overc":15,"pair+draw":48,"combo draw":12,"gutshot":19}},{"key":"Raise","n":322,"dist":{"two pair":57,"set/trips":38,"pair":71,"straight+":50,"pair+draw":50,"flush draw":16,"combo draw":11,"OESD":8,"gutshot":11,"air/overc":10}},{"key":"Call","n":1615,"dist":{"pair":491,"two pair":349,"set/trips":85,"straight+":95,"air/overc":58,"OESD":60,"pair+draw":330,"flush draw":45,"gutshot":60,"combo draw":42}},{"key":"Fold","n":1251,"dist":{"air/overc":283,"pair+draw":138,"pair":492,"combo draw":6,"gutshot":162,"OESD":33,"two pair":114,"set/trips":6,"flush draw":15,"straight+":2}}],"vs_size":{"Call":{"<33":{"n":115,"dist":{"pair":38,"pair+draw":21,"two pair":21,"air/overc":8,"OESD":4,"straight+":7,"flush draw":4,"gutshot":6,"set/trips":3,"combo draw":3}},"75-100":{"n":278,"dist":{"pair":79,"OESD":14,"pair+draw":61,"flush draw":8,"air/overc":11,"two pair":52,"straight+":13,"gutshot":11,"set/trips":18,"combo draw":11}},"50-75":{"n":654,"dist":{"two pair":145,"pair":203,"set/trips":25,"air/overc":22,"straight+":42,"pair+draw":134,"flush draw":20,"OESD":23,"gutshot":26,"combo draw":14}},"33-50":{"n":322,"dist":{"two pair":72,"pair":104,"air/overc":15,"pair+draw":70,"straight+":10,"set/trips":17,"combo draw":9,"gutshot":12,"OESD":8,"flush draw":5}},"100+":{"n":246,"dist":{"straight+":23,"pair":67,"OESD":11,"two pair":59,"flush draw":8,"air/overc":2,"pair+draw":44,"combo draw":5,"set/trips":22,"gutshot":5}}},"Fold":{"<33":{"n":41,"dist":{"air/overc":12,"pair":18,"pair+draw":4,"two pair":3,"OESD":3,"straight+":1}},"100+":{"n":243,"dist":{"pair+draw":25,"pair":96,"gutshot":45,"two pair":29,"air/overc":37,"combo draw":3,"straight+":1,"flush draw":2,"set/trips":2,"OESD":3}},"50-75":{"n":476,"dist":{"pair":190,"pair+draw":50,"air/overc":125,"two pair":38,"gutshot":50,"OESD":12,"combo draw":1,"flush draw":9,"set/trips":1}},"33-50":{"n":229,"dist":{"air/overc":61,"pair":85,"pair+draw":32,"gutshot":25,"set/trips":2,"two pair":20,"OESD":3,"combo draw":1}},"75-100":{"n":262,"dist":{"pair":103,"combo draw":1,"air/overc":48,"OESD":12,"gutshot":42,"pair+draw":27,"two pair":24,"set/trips":1,"flush draw":4}}},"Raise":{"50-75":{"n":129,"dist":{"two pair":21,"flush draw":5,"straight+":21,"combo draw":4,"set/trips":18,"OESD":3,"gutshot":6,"pair":28,"pair+draw":18,"air/overc":5}},"75-100":{"n":46,"dist":{"set/trips":3,"straight+":10,"two pair":6,"pair":8,"air/overc":1,"pair+draw":10,"combo draw":2,"flush draw":4,"gutshot":2}},"33-50":{"n":67,"dist":{"pair":16,"pair+draw":14,"straight+":6,"combo draw":2,"set/trips":6,"two pair":10,"air/overc":3,"flush draw":4,"gutshot":2,"OESD":4}},"100+":{"n":52,"dist":{"straight+":10,"two pair":11,"pair+draw":6,"set/trips":6,"pair":13,"OESD":1,"gutshot":1,"air/overc":1,"combo draw":2,"flush draw":1}},"<33":{"n":28,"dist":{"two pair":9,"pair+draw":2,"pair":6,"straight+":3,"flush draw":2,"set/trips":5,"combo draw":1}}}}},"river":{"actions":[{"key":"Check","n":3337,"dist":{"pair":1527,"two pair":1030,"air/overc":457,"set/trips":121,"straight+":202}},{"key":"Bet:<33","n":165,"dist":{"pair":64,"set/trips":13,"two pair":54,"straight+":24,"air/overc":10}},{"key":"Bet:33-50","n":312,"dist":{"pair":111,"two pair":91,"air/overc":29,"straight+":57,"set/trips":24}},{"key":"Bet:50-75","n":584,"dist":{"air/overc":58,"two pair":167,"pair":194,"straight+":111,"set/trips":54}},{"key":"Bet:75-100","n":452,"dist":{"pair":133,"straight+":105,"air/overc":50,"two pair":121,"set/trips":43}},{"key":"Bet:100+","n":501,"dist":{"straight+":210,"two pair":92,"pair":100,"air/overc":40,"set/trips":59}},{"key":"Raise","n":238,"dist":{"pair":39,"set/trips":31,"two pair":41,"air/overc":20,"straight+":107}},{"key":"Call","n":981,"dist":{"pair":361,"two pair":394,"set/trips":67,"straight+":142,"air/overc":17}},{"key":"Fold","n":1071,"dist":{"pair":525,"air/overc":235,"two pair":263,"set/trips":23,"straight+":25}}],"vs_size":{"Call":{"50-75":{"n":305,"dist":{"pair":127,"two pair":126,"set/trips":18,"straight+":27,"air/overc":7}},"100+":{"n":271,"dist":{"pair":75,"straight+":67,"set/trips":26,"two pair":102,"air/overc":1}},"75-100":{"n":197,"dist":{"straight+":26,"pair":77,"two pair":77,"set/trips":15,"air/overc":2}},"33-50":{"n":128,"dist":{"two pair":58,"pair":47,"straight+":16,"set/trips":4,"air/overc":3}},"<33":{"n":80,"dist":{"two pair":31,"pair":35,"straight+":6,"air/overc":4,"set/trips":4}}},"Fold":{"100+":{"n":365,"dist":{"pair":173,"air/overc":61,"two pair":107,"set/trips":11,"straight+":13}},"50-75":{"n":322,"dist":{"air/overc":86,"pair":156,"two pair":69,"straight+":5,"set/trips":6}},"75-100":{"n":204,"dist":{"air/overc":42,"pair":105,"two pair":52,"straight+":3,"set/trips":2}},"33-50":{"n":129,"dist":{"pair":67,"air/overc":32,"two pair":27,"set/trips":3}},"<33":{"n":51,"dist":{"air/overc":14,"pair":24,"two pair":8,"straight+":4,"set/trips":1}}},"Raise":{"50-75":{"n":71,"dist":{"pair":16,"two pair":15,"straight+":21,"air/overc":7,"set/trips":12}},"<33":{"n":25,"dist":{"set/trips":2,"pair":5,"two pair":6,"straight+":8,"air/overc":4}},"33-50":{"n":52,"dist":{"air/overc":4,"straight+":24,"pair":9,"set/trips":5,"two pair":10}},"100+":{"n":52,"dist":{"straight+":34,"air/overc":1,"two pair":7,"pair":4,"set/trips":6}},"75-100":{"n":38,"dist":{"straight+":20,"air/overc":4,"set/trips":6,"pair":5,"two pair":3}}}}}},"hints":[{"title":"フロップのコールはステーション気味","detail":"フロップのコールの 45% が1ペア。薄いバリューを厚く、ブラフは減らす。","severity":"exploit","n":2627,"filter":{"street":"flop","action":"Call"}},{"title":"フロップのフォールドは適切（過剰でない）","detail":"フォールドの 55% が air・2pair+はほぼ降りない → オーバーフォールド狙いは効きにくい。打てば air は降りる。","severity":"info","n":1631,"filter":{"street":"flop","action":"Fold"}},{"title":"フロップ大ベットはバリュー偏重","detail":"75%+ベットの air は 14%（value 2pair+ 15%）。大ベットに過剰コールは不要。","severity":"exploit","n":394,"filter":null},{"title":"チェックには打って取れる","detail":"フロップのチェックは1ペア＋air主体（トラップ 9%）→ チェックバックせずこちらから cbet。","severity":"exploit","n":6889,"filter":{"street":"flop","action":"Check"}}]},"meta":{"generated":"2026-06-15 23:37","filter":"全期間 / 全データ"}};</script><script>
+/* FIELD report — renders the dashboard's フィールド tab as a mobile-shaped report.
+   Two layouts share one DOM:
+     • .screen-only — INTERACTIVE (open-range + Action×Range explorer with chips). Used on
+       screen AND in the HTML export (which inlines this JS + data → works offline, buttons live).
+     • .print-only  — STATIC EXPANDED (all positions, every action's per-category breakdown).
+       Hidden on screen; shown for PDF (@media print) and PNG (body.capture toggle).
+   The big-pot spotlight is removed. Explorer shows individual categories (2pair / set/trips /
+   straight+ separately), never collapsed into a single "value". Any player names are stripped. */
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const RANKS = "AKQJT98765432".split("");
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const pct = (p) => (p && p.pct != null ? p.pct + "%" : "–");
+const tile = (k, v, sub) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="sub">${sub || ""}</div></div>`;
+const z = (x) => String(x).padStart(2, "0");
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+const ALABEL = (k) => k.replace("Bet:", "Bet ");
+let LOADED = null; // {field, ex, meta} kept for the HTML export
+
+function grid(dict, rgb) {
+  const max = Math.max(1, ...Object.values(dict || {}));
+  let g = "";
+  for (let i = 0; i < 13; i++) for (let j = 0; j < 13; j++) {
+    const code = i === j ? RANKS[i] + RANKS[i] : (i < j ? RANKS[i] + RANKS[j] + "s" : RANKS[j] + RANKS[i] + "o");
+    const c = (dict || {})[code] || 0;
+    const on = c > 0, a = on ? 0.16 + (c / max) * 0.72 : 0;
+    const bg = on ? `rgba(${rgb},${a.toFixed(2)})` : "var(--rg-empty)";
+    g += `<div class="rg" style="background:${bg}">${code}${on ? `<small>${c}</small>` : ""}</div>`;
+  }
+  return g;
+}
+
+// ---- explorer category coloring (value=green, pair=gold, draw=blue, air=red — same as live page) ----
+const GROUPS = { V: ["straight+", "set/trips", "two pair"], P: ["pair"], D: ["pair+draw", "combo draw", "flush draw", "OESD", "gutshot"], A: ["air/overc"] };
+const CATGRP = {}; for (const g in GROUPS) GROUPS[g].forEach((c) => (CATGRP[c] = g));
+const CATCLS = { V: "v", P: "m", D: "d", A: "a" };
+const CATABBR = { "straight+": "st+", "set/trips": "set", "two pair": "2p", "pair": "1p", "pair+draw": "p+d", "combo draw": "cd", "flush draw": "FD", "OESD": "OE", "gutshot": "gs", "air/overc": "air" };
+const GHUE = { V: "21,160,92", P: "185,137,43", D: "63,106,216", A: "214,73,79" };
+const SIZES = ["<33", "33-50", "50-75", "75-100", "100+"];
+
+// ---- action_ranges labeled bars (river/turn bet, river call, 3bet) — mirrors live field tab ----
+function rangeBars(obj, mapping) {
+  const n = obj && obj.n, b = (obj && obj.buckets) || {};
+  if (!n) return `<div class="distrow"><span class="lab">データなし</span><span class="tr"></span><span class="vv">0</span></div>`;
+  return mapping.map(([key, label, cl]) => { const v = b[key] || 0; return `<div class="distrow"><span class="lab">${label}</span><span class="tr"><i class="${cl}" style="width:${v / n * 100}%"></i></span><span class="vv">${Math.round(v / n * 100)}%</span></div>`; }).join("");
+}
+
+// ============ INTERACTIVE explorer (ported from the live dashboard mountExplorer) ============
+function mountExplorer(root, ex) {
+  const RESP = new Set(["Call", "Fold", "Raise"]);
+  const st = { street: "flop", mode: "a2r", sel: null, sub: null };
+  root.innerHTML = `<div class="ph"><h3>アクション × 相手レンジ</h3></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px">
+      <div class="chips" data-r="street">${ex.streets.map((s, i) => `<span class="chip ${i === 0 ? "on" : ""}" data-s="${s}">${cap(s)}</span>`).join("")}</div>
+      <div class="chips" data-r="mode"><span class="chip on" data-m="a2r">アクション→役・ドロー</span><span class="chip" data-m="r2a">役・ドロー→アクション</span></div>
+    </div>
+    <div class="chips" data-r="sel" style="margin-bottom:7px"></div>
+    <div class="chips" data-r="sub" style="margin-bottom:7px"></div>
+    <div class="dist" data-r="bars"></div>
+    <div class="note" data-r="read" style="margin-top:11px"></div>`;
+  const q = (s) => root.querySelector(`[data-r="${s}"]`);
+  const barRows = (rows) => rows.map(([lab, p, c]) => `<div class="distrow"><span class="lab">${lab}</span><span class="tr"><i class="${c || "d"}" style="width:${Math.min(100, p)}%"></i></span><span class="vv">${p}%</span></div>`).join("") || '<div class="nlabel">データなし</div>';
+  const distRows = (dist, n) => ex.cats.map((c) => [c, dist[c] || 0]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]).map(([c, v]) => [c, Math.round(v / n * 100), CATCLS[CATGRP[c]]]);
+  function draw() {
+    const D = ex.data[st.street];
+    if (st.mode === "a2r") {
+      q("sel").innerHTML = D.actions.map((a) => `<span class="chip ${a.key === st.sel ? "on" : ""}" data-a="${a.key}">${ALABEL(a.key)}<span class="nlabel">${a.n}</span></span>`).join("");
+      if (!D.actions.find((a) => a.key === st.sel)) st.sel = (D.actions[0] || {}).key;
+      const A = D.actions.find((a) => a.key === st.sel);
+      let dist = A ? A.dist : {}, n = A ? A.n : 0, subLabel = "";
+      if (A && RESP.has(A.key) && D.vs_size[A.key]) {
+        const sizes = D.vs_size[A.key];
+        q("sub").innerHTML = `<span class="nlabel" style="margin-right:3px">対面サイズ:</span><span class="chip ${!st.sub ? "on" : ""}" data-sub="">全部</span>` + SIZES.filter((s) => sizes[s]).map((s) => `<span class="chip ${st.sub === s ? "on" : ""}" data-sub="${s}">${s}%<span class="nlabel">${sizes[s].n}</span></span>`).join("");
+        if (st.sub && sizes[st.sub]) { dist = sizes[st.sub].dist; n = sizes[st.sub].n; subLabel = ` (vs ${st.sub}%)`; }
+      } else { q("sub").innerHTML = ""; st.sub = null; }
+      q("bars").innerHTML = barRows(distRows(dist, n || 1));
+      q("read").innerHTML = `<b>${ALABEL(st.sel || "")}${subLabel}</b>（n=${n}）— 持っていた役・ドローのカテゴリ別内訳。`;
+    } else {
+      q("sel").innerHTML = ex.cats.map((c) => `<span class="chip ${c === st.sel ? "on" : ""}" data-c="${c}">${c}</span>`).join("");
+      if (!ex.cats.includes(st.sel)) st.sel = "flush draw";
+      q("sub").innerHTML = "";
+      const counts = D.actions.map((a) => [a.key, a.dist[st.sel] || 0]);
+      const tot = counts.reduce((s, x) => s + x[1], 0) || 1;
+      q("bars").innerHTML = barRows(counts.filter((x) => x[1] > 0).map(([k, v]) => [ALABEL(k), Math.round(v / tot * 100), "d"]));
+      q("read").innerHTML = `<b>${st.sel}</b> を持っている時のアクション分布（n≈${tot}）。`;
+    }
+  }
+  q("street").onclick = (e) => { const c = e.target.closest(".chip"); if (!c) return;[...e.currentTarget.children].forEach((x) => x.classList.toggle("on", x === c)); st.street = c.dataset.s; st.sub = null; draw(); };
+  q("mode").onclick = (e) => { const c = e.target.closest(".chip"); if (!c) return;[...e.currentTarget.children].forEach((x) => x.classList.toggle("on", x === c)); st.mode = c.dataset.m; st.sel = null; st.sub = null; draw(); };
+  q("sel").onclick = (e) => { const c = e.target.closest(".chip"); if (!c) return; st.sel = c.dataset.a || c.dataset.c; st.sub = null; draw(); };
+  q("sub").onclick = (e) => { const c = e.target.closest(".chip"); if (!c) return; st.sub = c.dataset.sub || null; draw(); };
+  draw();
+}
+
+// ============ STATIC EXPANDED explorer (per-category heatmaps, for PNG/PDF) ============
+function heatmap(rows, ex) {
+  const head = ex.cats.map((c) => `<th class="g${CATGRP[c]}">${CATABBR[c] || c}</th>`).join("");
+  const body = rows.map((r) => {
+    const tds = ex.cats.map((c) => {
+      const v = r.n ? Math.round((r.dist[c] || 0) / r.n * 100) : 0;
+      const al = v > 0 ? (0.1 + v / 100 * 0.66).toFixed(2) : 0;
+      return `<td style="background:rgba(${GHUE[CATGRP[c]]},${al})">${v || ""}</td>`;
+    }).join("");
+    return `<tr><td class="k">${r.label}</td><td class="n">${r.n}</td>${tds}</tr>`;
+  }).join("");
+  return `<table class="matrix"><thead>
+    <tr><th colspan="2"></th><th colspan="3" class="grp gV">2pair+</th><th colspan="1" class="grp gP">1ペア</th><th colspan="5" class="grp gD">ドロー</th><th colspan="1" class="grp gA">air</th></tr>
+    <tr><th class="k"></th><th class="n">n</th>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+function explorerExpanded(ex, st) {
+  const D = ex.data[st]; if (!D) return "";
+  const actRows = D.actions.filter((a) => a.n > 0).map((a) => ({ label: ALABEL(a.key), n: a.n, dist: a.dist }));
+  let vss = "";
+  for (const act of ["Call", "Fold"]) {
+    const sizes = D.vs_size && D.vs_size[act]; if (!sizes) continue;
+    const rows = SIZES.filter((s) => sizes[s] && sizes[s].n >= 20).map((s) => ({ label: "vs " + s + "%", n: sizes[s].n, dist: sizes[s].dist }));
+    if (!rows.length) continue;
+    vss += `<div class="subhd">${act === "Call" ? "コール" : "フォールド"}レンジ × 直面ベットサイズ</div>${heatmap(rows, ex)}`;
+  }
+  return `<div class="panel print-only"><div class="ph"><h3>${cap(st)}</h3><span class="hint">各アクションの役・ドロー（カテゴリ個別 %）</span></div>${heatmap(actRows, ex)}${vss}</div>`;
+}
+
+// ---- anonymize: strip every player/winner name (spotlight is removed, but belt-and-suspenders) ----
+function sanitize(field) {
+  (field.big_pots || []).forEach((bp) => {
+    (bp.players || []).forEach((p) => { delete p.name; });
+    if (bp.result && bp.result.winners) bp.result.winners.forEach((w) => { delete w.name; });
+  });
+  return field;
+}
+
+function render(field, ex, meta) {
+  const POS = ["UTG", "HJ", "CO", "BTN", "SB", "BB"], POSG = ["UTG", "HJ", "CO", "BTN", "SB"];
+  const d = field;
+  const tiles = tile("Pool VPIP", pct(d.pool.vpip), d.pool.vpip ? d.pool.vpip.n + " / " + d.pool.vpip.d : "")
+    + tile("Pool PFR", pct(d.pool.pfr), d.pool.pfr ? d.pool.pfr.n + " / " + d.pool.pfr.d : "")
+    + tile("Pool 3Bet", pct(d.pool.threebet), d.pool.threebet ? d.pool.threebet.n + " / " + d.pool.threebet.d : "")
+    + tile("seat-hands", (d.seat_hands || 0).toLocaleString(), "母集団サンプル");
+  const cell = (p) => `<td${p && (p.d === 0 || p.d < 50) ? ' class="lo"' : ""}>${pct(p)}</td>`;
+  const posrows = POS.map((p) => { const x = d.by_position[p]; return `<tr><td><span class="poschip">${p}</span></td>${cell(x.vpip)}${cell(x.pfr)}${cell(x.rfi)}${cell(x.threebet)}${cell(x.fold_to_3bet)}${cell(x.fold_to_cbet)}</tr>`; }).join("");
+  const ar = d.action_ranges;
+  const arSection = `<div class="panel">
+    <div class="subhd">リバー ベット/レイズ <span class="nlabel">n=${ar.river_bet.n}</span></div>
+    <div class="dist">${rangeBars(ar.river_bet, [["value", "value (2pair+)", "v"], ["pair", "1ペア", "m"], ["air", "bluff (air)", "a"]])}</div>
+    <div class="subhd">リバー コール <span class="nlabel">n=${ar.river_call.n}</span></div>
+    <div class="dist">${rangeBars(ar.river_call, [["value", "value (2pair+)", "v"], ["pair", "1ペア", "m"], ["air", "弱 (air)", "a"]])}</div>
+    ${ar.turn_bet ? `<div class="subhd">ターン ベット/レイズ <span class="nlabel">n=${ar.turn_bet.n}</span></div>
+    <div class="dist">${rangeBars(ar.turn_bet, [["value", "value (2pair+)", "v"], ["pair", "1ペア", "m"], ["air", "bluff (air)", "a"]])}</div>` : ""}
+    <div class="subhd">プリフロップ 3Bet <span class="nlabel">n=${ar.threebet.n}</span></div>
+    <div class="dist">${rangeBars(ar.threebet, [["QQ+", "QQ+", "v"], ["AK/AQ", "AK/AQ", "v"], ["broadway", "broadway", "m"], ["pair", "pair&lt;QQ", "m"], ["other", "other", "a"], ["SC", "SC (bluff)", "a"]])}</div>
+  </div>`;
+  const allHints = (d.hints || []).concat(ex.hints || []);
+  const hints = allHints.map((h) => `<div class="note ${h.severity === "exploit" ? "exploit" : ""}"><b>${esc(h.title)}</b>${h.n ? ` <span class="nlabel">n=${h.n}</span>` : ""}<br>${esc(h.detail)}</div>`).join("");
+  // open-range grids — interactive (chips) + expanded (all positions)
+  const gridsInteractive = `<div class="panel screen-only" id="gridint">
+    <div class="ph"><h3>オープンレンジ (13×13)</h3><div class="chips" data-r="gridchips">${POSG.map((p) => `<span class="chip ${p === "BTN" ? "on" : ""}" data-p="${p}">${p}</span>`).join("")}</div></div>
+    <div class="rangegrid" data-r="fieldgrid">${grid(d.grids.BTN, "47,115,216")}</div>
+    <div class="nlabel" style="font-size:9.5px;margin-top:8px">セル濃度=RFI頻度・数字=観測回数。チップで席を切替（画面・HTML）。</div></div>`;
+  const gridsExpanded = `<div class="panel print-only">${POSG.map((p) => `<div class="gridwrap"><div class="gl"><span class="poschip">${p}</span> オープン(RFI)レンジ</div><div class="rangegrid">${grid(d.grids[p], "47,115,216")}</div></div>`).join("")}<div class="nlabel" style="font-size:9.5px">セル濃度=RFI頻度・数字=観測回数。</div></div>`;
+  // explorer — interactive + expanded
+  const explorerExpandedHTML = (ex.streets || ["flop", "turn", "river"]).map((st) => explorerExpanded(ex, st)).join("");
+  const clegend = `<div class="clegend"><span><i style="background:var(--val)"></i>2pair+（緑）</span><span><i style="background:var(--pair)"></i>1ペア（金）</span><span><i style="background:var(--draw)"></i>ドロー（青）</span><span><i style="background:var(--air)"></i>air（赤）</span> <span style="color:var(--mut2)">数値はカテゴリ個別</span></div>`;
+
+  $("#sheet").innerHTML = `
+    <div class="r-head"><div class="mk">♠</div><div><h1>フィールド分析レポート</h1><div class="sub">Ten-Four Tracker · アンノウン母集団の実レンジ</div></div></div>
+    <div class="r-meta"><span>生成 <b>${meta.generated}</b></span><span>対象 <b>${(d.hands || 0).toLocaleString()}</b> hands</span><span>母集団 <b>${(d.seat_hands || 0).toLocaleString()}</b> seat-hands</span><span>絞込 <b>${esc(meta.filter)}</b></span></div>
+    <div class="banner">★ Ten-Four は全員のホールカードを公開。Fast Foldでは個別相手が貯まらないため、<b>プール平均が対策の起点</b>です。数値は暫定（アーカイブは生涯の部分サンプル）— 必ず分母(n)を確認。</div>
+
+    <div class="tiles">${tiles}</div>
+
+    <div class="sec">対策のヒント</div>
+    <div class="notes">${hints || '<div class="note">ヒントなし（サンプル不足）</div>'}</div>
+
+    <div class="sec">ポジション別 標準スタッツ</div>
+    <div class="panel"><table class="pos">
+      <tr><th>Pos</th><th>VPIP</th><th>PFR</th><th>RFI</th><th>3Bet</th><th>F→3B</th><th>F→CB</th></tr>${posrows}
+    </table><div class="nlabel" style="margin-top:8px;font-size:9.5px">薄字 = 分母が小さく参考値（n&lt;50）</div></div>
+
+    <div class="sec">アクション別 相手レンジ内訳</div>
+    ${arSection}
+
+    <div class="sec">フィールド オープンレンジ (13×13)</div>
+    ${gridsInteractive}${gridsExpanded}
+
+    <div class="sec">アクション × 相手レンジ エクスプローラー</div>
+    ${clegend}
+    <div class="nlabel screen-only" style="margin:0 2px 9px;font-size:10px">画面・HTMLはチップで切替。PNG/PDFは全アクションをカテゴリ別に一覧展開します。</div>
+    <div class="panel screen-only" id="xint"></div>
+    ${explorerExpandedHTML}
+
+    <div class="r-foot">Ten-Four Tracker — フィールド分析レポート（スマホ表示・匿名化済み）<br>
+    数値は母集団の暫定サンプルに基づきます。<b>${esc(meta.filter)}</b> / 生成 ${meta.generated}。プレイヤー名はプライバシー保護のため非表示。</div>`;
+
+  // wire interactive controls
+  const gint = $("#gridint");
+  if (gint) gint.querySelector('[data-r="gridchips"]').onclick = (e) => {
+    const c = e.target.closest(".chip"); if (!c) return;
+    [...e.currentTarget.children].forEach((x) => x.classList.toggle("on", x === c));
+    gint.querySelector('[data-r="fieldgrid"]').innerHTML = grid(d.grids[c.dataset.p], "47,115,216");
+  };
+  if ($("#xint")) mountExplorer($("#xint"), ex);
+}
+
+// ---------- exports ----------
+function download(blob, name) {
+  const u = URL.createObjectURL(blob); const a = document.createElement("a");
+  a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 1500);
+}
+function fname(ext) { const d = new Date(); return `tenfour-field-${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}.${ext}`; }
+function setBusy(b, label) {
+  ["btn-png", "btn-pdf", "btn-html"].forEach((id) => { const e = $("#" + id); if (e) e.disabled = b; });
+  const e = $("#btn-png"); if (e) e.textContent = b && label ? label : "🖼 PNG";
+}
+async function exportPNG() {
+  setBusy(true, "生成中…");
+  document.body.classList.add("capture");          // swap to the expanded (everything-listed) layout
+  try {
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const node = $("#sheet");
+    const canvas = await html2canvas(node, { scale: Math.min(3, (window.devicePixelRatio || 1) * 2), backgroundColor: "#ffffff", useCORS: true, logging: false, windowWidth: node.scrollWidth });
+    document.body.classList.remove("capture");
+    canvas.toBlob((b) => { if (b) download(b, fname("png")); setBusy(false); }, "image/png");
+  } catch (e) { document.body.classList.remove("capture"); alert("PNG生成に失敗: " + e); setBusy(false); }
+}
+async function exportHTML() {
+  setBusy(true);
+  try {
+    let css = "", js = "";
+    try { css = await (await fetch("report.css")).text(); } catch (_) {}
+    try { js = await (await fetch("report.js")).text(); } catch (_) {}
+    const data = { field: Object.assign({}, LOADED.field, { big_pots: [] }), explorer: LOADED.ex, meta: LOADED.meta };
+    const json = JSON.stringify(data).replace(/<\//g, "<\\/");
+    const doc = `<!doctype html>\n<html lang="ja"><head><meta charset="utf-8">`
+      + `<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">`
+      + `<title>フィールド分析レポート — Ten-Four Tracker</title>\n<style>\n${css}\n</style></head>`
+      + `<body class="exported"><div class="wrap"><div class="sheet" id="sheet"></div></div>`
+      + `<script>window.__REPORT_DATA__=${json};<\/script>`
+      + `<script>\n${js}\n<\/script></body></html>`;
+    download(new Blob([doc], { type: "text/html;charset=utf-8" }), fname("html"));
+  } finally { setBusy(false); }
+}
+
+// ---------- boot ----------
+function filterLabel(q) {
+  const parts = [];
+  if (q.get("last_n") && q.get("last_n") !== "0") parts.push("直近" + Number(q.get("last_n")).toLocaleString() + "ハンド");
+  if (q.get("date_from") || q.get("date_to")) parts.push((q.get("date_from") || "…") + "〜" + (q.get("date_to") || "…"));
+  if (q.get("version")) parts.push(q.get("version") === "__none__" ? "version未記録" : "v" + q.get("version"));
+  if (q.get("profile")) parts.push("profile:" + q.get("profile"));
+  return parts.length ? parts.join(" / ") : "全期間 / 全データ";
+}
+async function boot() {
+  const now = new Date();
+  const generated = `${now.getFullYear()}-${z(now.getMonth() + 1)}-${z(now.getDate())} ${z(now.getHours())}:${z(now.getMinutes())}`;
+  try {
+    let field, ex, meta;
+    if (window.__REPORT_DATA__) {
+      field = window.__REPORT_DATA__.field; ex = window.__REPORT_DATA__.explorer;
+      meta = window.__REPORT_DATA__.meta || { generated, filter: "全期間 / 全データ" };
+    } else {
+      const q = new URLSearchParams(location.search);
+      const qs = q.toString() ? "?" + q.toString() : "";
+      [field, ex] = await Promise.all([
+        fetch("/analytics/field" + qs).then((r) => r.json()),
+        fetch("/analytics/explorer").then((r) => r.json()),
+      ]);
+      meta = { generated, filter: filterLabel(q) };
+    }
+    sanitize(field);
+    LOADED = { field, ex, meta };
+    render(field, ex, meta);
+  } catch (e) {
+    $("#sheet").innerHTML = `<div style="padding:30px;color:#d6494f">読み込み失敗: ${esc(e.message || e)}<br><span style="color:#9aa3b1;font-size:12px">サーバー(:8765)が起動しているか確認してください。</span></div>`;
+  }
+  const png = $("#btn-png"), pdf = $("#btn-pdf"), html = $("#btn-html");
+  if (png) png.onclick = exportPNG;
+  if (pdf) pdf.onclick = () => window.print();
+  if (html) html.onclick = exportHTML;
+}
+boot();
+
+</script></body></html>
